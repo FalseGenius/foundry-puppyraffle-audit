@@ -120,7 +120,7 @@ contract PuppyRaffle is ERC721, Ownable {
                 return i;
             }
         }
-        // q what if the player is idx 0? They might they they're not active!
+        // q what if the player is idx 0? They might think they they're not active!
         return 0;
     }
 
