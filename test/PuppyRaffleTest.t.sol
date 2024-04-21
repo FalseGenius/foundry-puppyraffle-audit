@@ -213,4 +213,62 @@ contract PuppyRaffleTest is Test {
         puppyRaffle.withdrawFees();
         assertEq(address(feeAddress).balance, expectedPrizeAmount);
     }
+
+    function testDosOnEnterRaffle() public {
+        address playerZero = address(uint160(1000));
+        deal(playerZero, 1 ether);
+        address[] memory players = new address[](1);
+        players[0] = playerZero;
+        vm.prank(playerZero);
+        puppyRaffle.enterRaffle{value: entranceFee * 1}(players);
+
+        address alice = makeAddr("alice");
+        deal(alice, 1 ether);
+
+
+        address[] memory players2 = new address[](1);
+        uint256 gasStartAlice = gasleft();
+        players2[0] = alice;
+        vm.prank(alice);
+        puppyRaffle.enterRaffle{value: entranceFee * 1}(players2);
+        uint256 gasLeftAlice = gasStartAlice - gasleft();
+
+        // Adding 100 player to the bunch
+        address[] memory playerx = new address[](100);
+        for (uint256 idx; idx < playerx.length; idx++) {
+            address play__er = address(uint160(idx));
+            playerx[idx] = play__er;
+        }
+        uint256 gasStartCris = gasleft();
+        address cris = makeAddr("cris");
+        deal(cris, 100 ether);
+        vm.prank(cris);  
+        puppyRaffle.enterRaffle{value: entranceFee * playerx.length}(playerx);
+        uint256 gasLeftCris = gasStartCris - gasleft();
+
+
+        // Gas consumed by next 100 players
+        uint256 count = 0;
+        address[] memory playerz = new address[](100);
+        for (uint256 idx; idx < playerz.length; idx++) {
+            address play__er = address(uint160(idx+playerz.length));
+            playerz[count] = play__er;
+            count += 1;
+        }
+
+        uint256 gasStartDock = gasleft();
+        address Dock = makeAddr("Dock");
+        deal(Dock, 100 ether);
+        vm.prank(Dock);  
+        puppyRaffle.enterRaffle{value: entranceFee * playerx.length}(playerz);
+        uint256 gasLeftDock = gasStartDock - gasleft();
+
+
+        console.log("Gas consumed by alice: %s", gasLeftAlice);
+        console.log("Gas consumed by 100 players: %s", gasLeftCris);
+        console.log("Gas consumed by next 100 players: %s", gasLeftDock);
+
+        assertLt(gasLeftAlice, gasLeftCris);
+        assertLt(gasLeftCris, gasLeftDock);
+    }
 }
