@@ -113,13 +113,14 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param player the address of a player in the raffle
     /// @return the index of the player in the array, if they are not active, it returns 0
     // @audit-m getActivePlayerIndex returns 0 if the player isn't found in players array which
-    // is a valid index
+    // is a valid index. 
     function getActivePlayerIndex(address player) external view returns (uint256) {
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i] == player) {
                 return i;
             }
         }
+        // q what if the player is idx 0? They might they they're not active!
         return 0;
     }
 

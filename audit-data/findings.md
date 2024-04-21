@@ -1,3 +1,19 @@
+### [H-01] Deleting the player from `PuppyRaffle::players` array after refunding them entranceFee in `PuppyRaffle::refund()` results in Reentrancy vulnerability, draining the contract balance.
+
+**Description:** `PuppyRaffle::refund()` allows players to refund their deposits by initiating external call first and subsequently setting the user's address to zero in `PuppyRaffle::players()` . This introduces a vulnerability to Reentrancy attack, where attacker could deploy a contract with a malicious fallback() function to retrigger`PuppyRaffle::refund()`. Since user remains in `PuppyRaffle::players()` at this point, they would successfully pass all checks, leading to repeatedly executions of sendValue, ultimately draining the contract.
+
+```javascript
+@>      payable(msg.sender).sendValue(entranceFee); // Reentrancy here
+        players[playerIndex] = address(0);
+```
+
+**Impact:** The reentrancy vulnerability could result in a significant drain on contract's balance, potentially leading to financial losses for the contract owner and participants.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
+
+
 ### [M-01] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle()` function is a potential Denial-of-service (DoS) attack, incrementing gas costs for future players.
 
 **Description:** The `PuppyRaffle::enterRaffle()` function checks for address duplicates using an unbounded for-loop which causes gas-costs to blow up, since the longer the `PuppyRaffle::players` array is, the more checks new players will have to make. This means, gas costs for players entering the raffle when the Raffle starts will be dramatically lower than those who enter later. Every additional address that gets added to players array results in additional duplicate address check that loop will have to make.
