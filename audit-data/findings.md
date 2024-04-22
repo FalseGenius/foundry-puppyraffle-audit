@@ -279,7 +279,7 @@ function testDosOnEnterRaffle() public {
 
 ```
 
-### [l-02] Weak randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
+### [l-02] Insecure randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
 
 **Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process, compromising the randomness and fairness of the function.
 
