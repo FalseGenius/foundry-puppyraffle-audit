@@ -299,3 +299,13 @@ function testDosOnEnterRaffle() public {
 **Proof of Concept:**
 
 **Recommended Mitigation:** 
+
+### [l-03] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract.
+
+**Description:** The `PuppyRaffle::totalFees` is of type uint64 and it can hold up to `18446744073709551615~ 18.4 ether approx`. If the contract gets a lot of deposits, `PuppyRaffle::totalFees`  value wraps around and starts from 0, thereby it is susceptible to overflow. This leads to an incorrect representation of contract balance, and it directly affects `PuppyRaffle::withdrawFees()`, as the owner can only withdraw amount less than what is actually held by the contract.
+
+**Impact:** Due to the overflow in `PuppyRaffle::totalFees`, the contract will never truly be empty, even if the actual balance exceeds maximum value stored. Additionally, it limits owner's ability to withdraw funds and may hinder operational capabilities of PuppyRaffle platform.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
