@@ -363,6 +363,9 @@ contract PuppyRaffleTest is Test {
          */
 
         assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
+
+        vm.expectRevert();
+        puppyRaffle.withdrawFees();
     }
 
 }
