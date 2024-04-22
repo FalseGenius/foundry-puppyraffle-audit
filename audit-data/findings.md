@@ -257,50 +257,8 @@ function testDosOnEnterRaffle() public {
 
 ```
 
-### [l-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
 
-**Description:**  The `PuppyRaffle::getActivePlayerIndex()` incorrectly indicates that a user is inactive by returning 0 if they are not found in `PuppyRaffle::players` array. This behavior poses a problem because it can mislead an active user at index 0 into believing that they are inactive, thereby preventing them from triggering a refund. This undermines the intended functionality of the function, as it should accurately identify active users for a refund.
-
-**Impact:** This has significant implications for fairness of the PuppyRaffle contract. Any user at index 0 could be erroneously denied an opportunity to trigger a refund, which undermines contract fairness and user experience.
-
-**Recommended Mitigation:** Consider modifying the `PuppyRaffle::getActivePlayerIndex()` function to return a value that clearly indicates when a user is not found in the `PuppyRaffle::players` array. One common approach is to use a sentinel value, such as a `-1` to represent "Not found" or "inactive".
-
-```diff
-    function getActivePlayerIndex(address player) external view returns (uint256) {
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i] == player) {
-                return i;
-            }
-        }
-
-+       return -1;
--       return 0;
-    }
-
-```
-
-### [l-02] Insecure randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
-
-**Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process, compromising the randomness and fairness of the function.
-
-```javascript
-    function selectWinner() external {
-        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
-        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
-        
-@>       uint256 winnerIndex =
-            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
-        // Rest of the code
-    }
-```
-
-**Impact:** A malicious miner can manipulate the outcome, rigging the results in favor of themselves or others, compromising the trust of participants and authenticity, leading to reputational damage.
-
-**Proof of Concept:**
-
-**Recommended Mitigation:** Consider using verified randomness oracle like Chainlink VRF.
-
-### [l-03] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract, making the `PuppyRaffle::withdrawFees()` inoperable.
+### [M-02] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract, making the `PuppyRaffle::withdrawFees()` inoperable.
 
 **Description:** The `PuppyRaffle::totalFees` is of type uint64 and it can hold up to `18446744073709551615~ 18.4 ether approx`; the maximum value a uin64 variable can hold. If the contract gets a lot of deposits and `PuppyRaffle::totalFees` exceeds maximum value of uint64, its value wraps around and starts from 0, thereby it is susceptible to overflow. This leads to an incorrect representation of contract balance, and it directly affects `PuppyRaffle::withdrawFees()`, as the `PuppyRaffle::feeAddress` cannot withdraw fees if totalFees is not equivalent to contract balance.
 
@@ -363,7 +321,53 @@ function testDosOnEnterRaffle() public {
 **Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
 
 
-### [S-#] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
+
+### [L-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
+
+**Description:**  The `PuppyRaffle::getActivePlayerIndex()` incorrectly indicates that a user is inactive by returning 0 if they are not found in `PuppyRaffle::players` array. This behavior poses a problem because it can mislead an active user at index 0 into believing that they are inactive, thereby preventing them from triggering a refund. This undermines the intended functionality of the function, as it should accurately identify active users for a refund.
+
+**Impact:** This has significant implications for fairness of the PuppyRaffle contract. Any user at index 0 could be erroneously denied an opportunity to trigger a refund, which undermines contract fairness and user experience.
+
+**Recommended Mitigation:** Consider modifying the `PuppyRaffle::getActivePlayerIndex()` function to return a value that clearly indicates when a user is not found in the `PuppyRaffle::players` array. One common approach is to use a sentinel value, such as a `-1` to represent "Not found" or "inactive".
+
+```diff
+    function getActivePlayerIndex(address player) external view returns (uint256) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i] == player) {
+                return i;
+            }
+        }
+
++       return -1;
+-       return 0;
+    }
+
+```
+
+### [L-02] Insecure randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
+
+**Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process, compromising the randomness and fairness of the function.
+
+```javascript
+    function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
+        
+@>       uint256 winnerIndex =
+            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        // Rest of the code
+    }
+```
+
+**Impact:** A malicious miner can manipulate the outcome, rigging the results in favor of themselves or others, compromising the trust of participants and authenticity, leading to reputational damage.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** Consider using verified randomness oracle like Chainlink VRF.
+
+
+
+### [L-01] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
 
 **Description:** The max value uint64 can hold is 18446744073709551615 ~ 18.4e18. Any number beyond that is susceptible to overflow. The fee calculated in `PuppyRaffle::selectWinner()` is of type uint256 and that value gets truncated when it is casted off as uint64, resulting in incorrect calculation of the totalFees.
 
