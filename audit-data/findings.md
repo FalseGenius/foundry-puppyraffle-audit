@@ -278,3 +278,24 @@ function testDosOnEnterRaffle() public {
     }
 
 ```
+
+### [l-02] Weak randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
+
+**Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process, compromising the randomness and fairness of the function.
+
+```javascript
+    function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
+        
+@>       uint256 winnerIndex =
+            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        // Rest of the code
+    }
+```
+
+**Impact:** A malicious miner can manipulate the outcome, rigging the results in favor of themselves or others, compromising the trust of participants and authenticity, leading to reputational damage.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
