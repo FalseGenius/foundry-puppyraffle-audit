@@ -142,9 +142,20 @@ contract PuppyRaffle is ERC721, Ownable {
         uint256 winnerIndex =
             uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
         address winner = players[winnerIndex];
+        
+        // q why not do address(this).balance?
         uint256 totalAmountCollected = players.length * entranceFee;
+
+        // q bet there is an arithmetic error here...
+        // Divisions result in precision loss.
         uint256 prizePool = (totalAmountCollected * 80) / 100;
         uint256 fee = (totalAmountCollected * 20) / 100;
+
+        // e This doesn't look safe? A lot of casting going on wiht the totalFees
+        // @audit overflow! Newer versions of solidity doesn't allow it
+            // := Check chisel: type(uint64).max => 18446744073709551615 => ~ 18.4 ether. 
+            // So if the contract makes above that, it's definitely going to overflow
+        // Fixes: Newer versions of solidity, bigger uints
         totalFees = totalFees + uint64(fee);
 
         uint256 tokenId = totalSupply();
