@@ -183,6 +183,8 @@ contract PuppyRaffle is ERC721, Ownable {
     }
 
     /// @notice this function will withdraw the fees to the feeAddress
+    // @audit If totalFees is susceptible to overflow, contract balance will never be equal to totalFees and 
+    // feeAddress would never be able to withdraw!
     function withdrawFees() external {
         require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
         uint256 feesToWithdraw = totalFees;
