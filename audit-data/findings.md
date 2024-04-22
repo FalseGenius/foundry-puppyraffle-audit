@@ -256,3 +256,25 @@ function testDosOnEnterRaffle() public {
     }
 
 ```
+
+### [l-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
+
+**Description:**  The `PuppyRaffle::getActivePlayerIndex()` incorrectly indicates that a user is inactive by returning 0 if they are not found in `PuppyRaffle::players` array. This behavior poses a problem because it can mislead an active user at index 0 into believing that they are inactive, thereby preventing them from triggering a refund. This undermines the intended functionality of the function, as it should accurately identify active users for a refund.
+
+**Impact:** This has significant implications for fairness of the PuppyRaffle contract. Any user at index 0 could be erroneously denied an opportunity to trigger a refund, which undermines contract fairness and user experience.
+
+**Recommended Mitigation:** Consider modifying the `PuppyRaffle::getActivePlayerIndex()` function to return a value that clearly indicates when a user is not found in the `PuppyRaffle::players` array. One common approach is to use a sentinel value, such as a `-1` to represent "Not found" or "inactive".
+
+```diff
+    function getActivePlayerIndex(address player) external view returns (uint256) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i] == player) {
+                return i;
+            }
+        }
+
++       return -1;
+-       return 0;
+    }
+
+```
