@@ -361,3 +361,41 @@ function testDosOnEnterRaffle() public {
 </details>
 
 **Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
+
+
+### [S-#] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
+
+**Description:** The max value uint64 can hold is 18446744073709551615 ~ 18.4e18. Any number beyond that is susceptible to overflow. The fee calculated in `PuppyRaffle::selectWinner()` is of type uint256 and that value gets truncated when it is casted off as uint64, resulting in incorrect calculation of the totalFees.
+
+**Impact:** The unsafe casting of uint256 fee into uint64 in `PuppyRaffle::selectWinner()` leads to an incorrect calculation of the total fees stored in `PuppyRaffle::totalFees`. This compromises the accuracy of fee tracking within the contract, resulting in potential financial discrepancies.
+
+**Proof of Concept:**
+
+1. Launch Chisel (a component of foundry toolkit) with the command:
+```
+chisel
+```
+
+2. Save 20e18 amount (An amount greater than what uint64 can hold) to a variable.
+```
+uint256 amount = 20e18;
+```
+
+3. Cast amount as uint64
+```
+uint64 castedValue = uint64(amount);
+```
+
+4. Check the value of castedValue
+```
+castedValue
+```
+
+- *Result: 1553255926290448384 ~ 1.5e18.
+
+So 20e18 gets casted as 1.5e18 due to overflow.
+
+**Recommended Mitigation:** There are few adjustments to consider.
+
+1. Consider using SafeMath library provided by OpenZeppelin for arithmetic operations, preventing any potential underflows/overflows. 
+2. Use a different data type to accomodate larger values i.e., uint256.

@@ -156,6 +156,7 @@ contract PuppyRaffle is ERC721, Ownable {
             // := Check chisel: type(uint64).max => 18446744073709551615 => ~ 18.4 ether. 
             // So if the contract makes above that, it's definitely going to overflow
         // Fixes: Newer versions of solidity, bigger uints
+        // @audit uint64(fee) -> unsafe casting
         totalFees = totalFees + uint64(fee);
 
         uint256 tokenId = totalSupply();
