@@ -298,7 +298,7 @@ function testDosOnEnterRaffle() public {
 
 **Proof of Concept:**
 
-**Recommended Mitigation:** 
+**Recommended Mitigation:** Consider using verified randomness oracle like Chainlink VRF.
 
 ### [l-03] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract, making the `PuppyRaffle::withdrawFees()` inoperable.
 
@@ -399,3 +399,4 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 
 1. Consider using SafeMath library provided by OpenZeppelin for arithmetic operations, preventing any potential underflows/overflows. 
 2. Use a different data type to accomodate larger values i.e., uint256.
+
