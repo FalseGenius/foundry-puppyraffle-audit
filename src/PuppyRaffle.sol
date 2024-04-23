@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
+// @audit-i Use a fixed version of solidity; use of floating pragma is not recommended.
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -21,6 +22,7 @@ contract PuppyRaffle is ERC721, Ownable {
     uint256 public immutable entranceFee;
 
     address[] public players;
+    // @audit-info make raffleDuration immutable if it's not changed anywhere
     uint256 public raffleDuration;
     uint256 public raffleStartTime;
     address public previousWinner;
@@ -77,8 +79,7 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @notice duplicate entrants are not allowed
     /// @param newPlayers the list of players to enter the raffle
 
-    // @audit-i Use revert instead of require to save gas.
-    // q were custom reverts a thing in 0.7.6?
+    // q were custom reverts a thing in 0.7.6? No!
     function enterRaffle(address[] memory newPlayers) public payable {
         require(msg.value == entranceFee * newPlayers.length, "PuppyRaffle: Must send enough to enter raffle");
         for (uint256 i = 0; i < newPlayers.length; i++) {
@@ -92,6 +93,9 @@ contract PuppyRaffle is ERC721, Ownable {
                 require(players[i] != players[j], "PuppyRaffle: Duplicate player");
             }
         }
+
+        // audit-i do we emit events i newPlayers array length is 0; when no new players are entering? 
+        // Sounds like waste of gas. 
         emit RaffleEnter(newPlayers);
     }
 
@@ -148,6 +152,10 @@ contract PuppyRaffle is ERC721, Ownable {
 
         // q bet there is an arithmetic error here...
         // Divisions result in precision loss.
+        // @audit-info Don't use magic numbers. Use constants reflecting the meaning of the number stated.
+        // uint256 constant POOL_PERCENTAGE = 80;
+        // uint256 constant FEE_PERCENTAGE = 20;
+        // uint256 constant PRECISION = 20;
         uint256 prizePool = (totalAmountCollected * 80) / 100;
         uint256 fee = (totalAmountCollected * 20) / 100;
 
@@ -197,10 +205,13 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param newFeeAddress the new address to send fees to
     function changeFeeAddress(address newFeeAddress) external onlyOwner {
         feeAddress = newFeeAddress;
+
+        // @audit are we missing events in other functions?
         emit FeeAddressChanged(newFeeAddress);
     }
 
     /// @notice this function will return true if the msg.sender is an active player
+    // @audit-i/g this isn't used anywhere? Cluttering up the code - wasting gas
     function _isActivePlayer() internal view returns (bool) {
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i] == msg.sender) {
