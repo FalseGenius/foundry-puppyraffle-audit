@@ -93,15 +93,15 @@
 ```diff
 
     function refund(uint256 playerIndex) public {
-+           // Checks
+            // Checks
             address playerAddress = players[playerIndex];
             require(playerAddress == msg.sender, "PuppyRaffle: Only the player can refund");
             require(playerAddress != address(0), "PuppyRaffle: Player already refunded, or is not active");
 
-+           // Effects
+            // Effects
 +           players[playerIndex] = address(0);
 
-+           // External Calls
+            // External Calls
             payable(msg.sender).sendValue(entranceFee);
 
 -           players[playerIndex] = address(0);
