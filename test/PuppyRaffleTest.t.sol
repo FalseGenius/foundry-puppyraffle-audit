@@ -378,6 +378,8 @@ contract PuppyRaffleTest is Test {
         // 0.8 ether -> totalFees
         puppyRaffle.selectWinner();
 
+        // contract balance: 0.8 ether. 
+        // Total fees: 0.8 ether.
         console.log("Contract balance before attack: %s" ,address(puppyRaffle).balance);
         console.log("Contract totalFees before attack: %s" ,puppyRaffle.totalFees());
 
@@ -398,7 +400,7 @@ contract PuppyRaffleTest is Test {
         vm.expectRevert();
         puppyRaffle.withdrawFees();
     }
-
+    
 }
 
 contract ReentrancyAttacker {
