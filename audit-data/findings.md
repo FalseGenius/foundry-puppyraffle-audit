@@ -320,7 +320,15 @@ function testDosOnEnterRaffle() public {
 
 **Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
 
+### [M-03] The require statement in `PuppyRaffle::withdrawFees()` function would always revert in case of discrepancies between `PuppyRaffle::totalFees` and contract balance, making it inoperable to withraw any fees.
 
+**Description:** The require check in `PuppyRaffle::withdrawFees()` makes the function inoperable in case of overflows (totalFees is susceptible to it), or receiving ether from a malicious contract using selfdestruct.
+
+**Impact:** Due to the discrepancy, the contract will never truly be empty, and it limits `PuppyRaffle::feeAddress`' ability to withdraw any ether from the contract, resulting in operational inefficencies.
+
+**Proof of Concept:**
+
+**Recommended Mitigation:** 
 
 ### [L-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
 
@@ -403,4 +411,6 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 
 1. Consider using SafeMath library provided by OpenZeppelin for arithmetic operations, preventing any potential underflows/overflows. 
 2. Use a different data type to accomodate larger values i.e., uint256.
+
+
 
