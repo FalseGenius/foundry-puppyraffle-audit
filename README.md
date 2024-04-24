@@ -13,10 +13,6 @@ This project is to enter a raffle to win a cute dog NFT. The protocol should do 
 4. Every X seconds, the raffle will be able to draw a winner and be minted a random puppy
 5. The owner of the protocol will set a feeAddress to take a cut of the `value`, and the rest of the funds will be sent to the winner of the puppy.
 
-- [Contest Details](#contest-details)
-  - [Contest Details](#contest-details-1)
-    - [Prize Pool](#prize-pool)
-  - [Stats](#stats)
 - [Puppy Raffle](#puppy-raffle)
 - [Getting Started](#getting-started)
   - [Requirements](#requirements)
@@ -29,6 +25,7 @@ This project is to enter a raffle to win a cute dog NFT. The protocol should do 
   - [Compatibilities](#compatibilities)
 - [Roles](#roles)
 - [Known Issues](#known-issues)
+  - [Create the audit report](#create-the-audit-report)
 
 # Getting Started
 
@@ -96,3 +93,12 @@ Player - Participant of the raffle, has the power to enter the raffle with the `
 # Known Issues
 
 None
+
+## Create the audit report
+
+View the [audit-report-templating](https://github.com/Cyfrin/audit-report-templating) repo to install all dependencies. 
+
+```bash
+cd audits
+pandoc report.md -o 24-04-2024-PuppyRaffleAuditReport.pdf --from markdown --template=eisvogel --listings
+```

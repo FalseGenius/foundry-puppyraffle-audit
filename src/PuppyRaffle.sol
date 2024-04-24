@@ -194,7 +194,7 @@ contract PuppyRaffle is ERC721, Ownable {
         raffleStartTime = block.timestamp;
         previousWinner = winner;
 
-        // @audit Winner won't get their money if their fallback is messed up. Is it bad....
+        // @audit-medium Winner won't get their money if their fallback is messed up. Is it bad....
         (bool success,) = winner.call{value: prizePool}("");
         require(success, "PuppyRaffle: Failed to send prize pool to winner");
         _safeMint(winner, tokenId);
