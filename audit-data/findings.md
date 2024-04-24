@@ -161,6 +161,70 @@
 
 **Recommended Mitigation:** Do not use block.timestamp, now or blockhash as a source of randomness. Consider using cryptographically-generated random number generator such as Chainlink VRF.
 
+### [H-03] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract, making the `PuppyRaffle::withdrawFees()` inoperable.
+
+**Description:** The `PuppyRaffle::totalFees` is of type uint64 and it can hold up to `18446744073709551615~ 18.4 ether approx`; the maximum value a uin64 variable can hold. If the contract gets a lot of deposits and `PuppyRaffle::totalFees` exceeds maximum value of uint64, its value wraps around and starts from 0, thereby it is susceptible to overflow. This leads to an incorrect representation of contract balance, and it directly affects `PuppyRaffle::withdrawFees()`, as the `PuppyRaffle::feeAddress` cannot withdraw fees if totalFees is not equivalent to contract balance.
+
+**Impact:** Due to the overflow in `PuppyRaffle::totalFees`, the contract will never truly be empty, even if the actual balance exceeds maximum value stored. Additionally, it limits feeAddress's ability to withdraw any funds and may hinder operational capabilities of PuppyRaffle platform.
+
+**Proof of Concept:** Have 93 players enter the contract, resulting in 93 ether getting deposited into PuppyRaffle.
+1. *PrizePool:  (totalAmountCollected * 80) / 100 => 93 * 0.8 => 74.4 ether.*
+2. *Expected totalFees: (totalAmountCollected * 20) / 100 => 93 * 0.2 => 18.6 ether.*
+3. *Contract Balance: 18.6 ether.*
+4. *Actual totalFees: 153255926290448384 ~ 0.15 ether*
+
+<details>
+
+<summary>PoC</summary>
+
+```javascript
+    function testArithmeticOverlowInSelectWinner() public playersEntered {
+        address alice = makeAddr("alice");
+        aliceEntered(alice);
+
+        address[] memory playerx = new address[](88);
+        for (uint256 idx=0; idx < 88; idx++) {
+            address player = address(uint160(idx+5));
+            playerx[idx] = player;
+        }
+
+        vm.prank(alice);
+        puppyRaffle.enterRaffle{value:entranceFee * playerx.length}(playerx);
+
+        // Contract balance before: 93e18
+        console.log("Contract balance before: %s", address(puppyRaffle).balance);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        puppyRaffle.selectWinner();
+
+        // Total fees: 153255926290448384 ~ 0.15 ether. 
+        // Actual Contract balance: 18600000000000000000 ~ 18.6 ether
+        console.log("Total fees: %s", puppyRaffle.totalFees());
+        console.log("Actual Contract balance: %s", address(puppyRaffle).balance);
+
+        /**
+         * @notice Overflow!
+         * totalFees is uint64 and type(uint64).max is 18.4 ether. Any value beyond that overflows
+         * Desired totalFees 93 * 0.2 ~= 18.6 ether 
+         * Actual totalFees: 153255926290448384 ~ 0.15 ether
+         *  Actual contract balance: 18.6 ether
+         */
+
+        assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
+
+        vm.expectRevert();
+        puppyRaffle.withdrawFees();
+    }
+
+```
+</details>
+
+**Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
+
+A better approach would be using `SafeMath` library of OpenZeppelin for arithmetics. Either that, or remove the balance check from `withdrawFees`.
+
 ### [M-01] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle()` function is a potential Denial-of-service (DoS) attack, incrementing gas costs for future players.
 
 **Description:** The `PuppyRaffle::enterRaffle()` function checks for address duplicates using an unbounded for-loop which causes gas-costs to blow up, since the longer the `PuppyRaffle::players` array is, the more checks new players will have to make. This means, gas costs for players entering the raffle when the Raffle starts will be dramatically lower than those who enter later. Every additional address that gets added to players array results in additional duplicate address check that loop will have to make.
@@ -290,69 +354,9 @@ function testDosOnEnterRaffle() public {
 ```
 
 
-### [M-02] `PuppyRaffle::totalFees` in `PuppyRaffle::selectWinner()` overflows when it stores amount greater than ~18.4e18, incorrectly reflecting the amount stored in the contract, making the `PuppyRaffle::withdrawFees()` inoperable.
 
-**Description:** The `PuppyRaffle::totalFees` is of type uint64 and it can hold up to `18446744073709551615~ 18.4 ether approx`; the maximum value a uin64 variable can hold. If the contract gets a lot of deposits and `PuppyRaffle::totalFees` exceeds maximum value of uint64, its value wraps around and starts from 0, thereby it is susceptible to overflow. This leads to an incorrect representation of contract balance, and it directly affects `PuppyRaffle::withdrawFees()`, as the `PuppyRaffle::feeAddress` cannot withdraw fees if totalFees is not equivalent to contract balance.
 
-**Impact:** Due to the overflow in `PuppyRaffle::totalFees`, the contract will never truly be empty, even if the actual balance exceeds maximum value stored. Additionally, it limits feeAddress's ability to withdraw any funds and may hinder operational capabilities of PuppyRaffle platform.
-
-**Proof of Concept:** Have 93 players enter the contract, resulting in 93 ether getting deposited into PuppyRaffle.
-1. *PrizePool:  (totalAmountCollected * 80) / 100 => 93 * 0.8 => 74.4 ether.*
-2. *Expected totalFees: (totalAmountCollected * 20) / 100 => 93 * 0.2 => 18.6 ether.*
-3. *Contract Balance: 18.6 ether.*
-4. *Actual totalFees: 153255926290448384 ~ 0.15 ether*
-
-<details>
-
-<summary>PoC</summary>
-
-```javascript
-    function testArithmeticOverlowInSelectWinner() public playersEntered {
-        address alice = makeAddr("alice");
-        aliceEntered(alice);
-
-        address[] memory playerx = new address[](88);
-        for (uint256 idx=0; idx < 88; idx++) {
-            address player = address(uint160(idx+5));
-            playerx[idx] = player;
-        }
-
-        vm.prank(alice);
-        puppyRaffle.enterRaffle{value:entranceFee * playerx.length}(playerx);
-
-        // Contract balance before: 93e18
-        console.log("Contract balance before: %s", address(puppyRaffle).balance);
-
-        vm.warp(block.timestamp + duration + 1);
-        vm.roll(block.number + 1);
-
-        puppyRaffle.selectWinner();
-
-        // Total fees: 153255926290448384 ~ 0.15 ether. 
-        // Actual Contract balance: 18600000000000000000 ~ 18.6 ether
-        console.log("Total fees: %s", puppyRaffle.totalFees());
-        console.log("Actual Contract balance: %s", address(puppyRaffle).balance);
-
-        /**
-         * @notice Overflow!
-         * totalFees is uint64 and type(uint64).max is 18.4 ether. Any value beyond that overflows
-         * Desired totalFees 93 * 0.2 ~= 18.6 ether 
-         * Actual totalFees: 153255926290448384 ~ 0.15 ether
-         *  Actual contract balance: 18.6 ether
-         */
-
-        assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
-
-        vm.expectRevert();
-        puppyRaffle.withdrawFees();
-    }
-
-```
-</details>
-
-**Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
-
-### [M-03] The require statement in `PuppyRaffle::withdrawFees()` function would always revert in case of discrepancies between `PuppyRaffle::totalFees` and contract balance, making it inoperable to withraw any fees.
+### [M-02] The require statement in `PuppyRaffle::withdrawFees()` function would always revert in case of discrepancies between `PuppyRaffle::totalFees` and contract balance, making it inoperable to withraw any fees.
 
 **Description:** The require check in `PuppyRaffle::withdrawFees()` makes the function inoperable in case of overflows (totalFees is susceptible to it), or receiving ether from a malicious contract using selfdestruct.
 
