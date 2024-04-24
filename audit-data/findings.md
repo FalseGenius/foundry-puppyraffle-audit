@@ -93,7 +93,7 @@
 
 **Recommended Mitigation:** You can go for one of the following counter measures,
 
-1. Follow the CEI (Cases, Effects, Interactions) pattern. For the  `PuppyRaffle::refund()`, cover the checks first. Set the states after that. Make external calls at the end.
+1. Follow the CEI (Cases, Effects, Interactions) pattern. For the  `PuppyRaffle::refund()`, cover the checks first. Set the states after that. Make external calls at the end. So have `PuppyRaffle::refund()` update  `players` array before making the external call.
 ```diff
 
     function refund(uint256 playerIndex) public {
