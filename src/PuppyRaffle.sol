@@ -23,7 +23,7 @@ contract PuppyRaffle is ERC721, Ownable {
     uint256 public immutable entranceFee;
 
     address[] public players;
-    // @audit-info make raffleDuration immutable if it's not changed anywhere
+    // @audit-gas make raffleDuration immutable if it's not changed anywhere
     uint256 public raffleDuration;
     uint256 public raffleStartTime;
     address public previousWinner;
