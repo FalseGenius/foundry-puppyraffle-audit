@@ -1,4 +1,4 @@
-### [H-01] Deleting the player from `PuppyRaffle::players` array after refunding them entranceFee in `PuppyRaffle::refund()` results in Reentrancy vulnerability, draining the contract balance.
+### [H-01] Reentrancy attack in `PuppyRaffle::refund()` enables entrant to drain the contract balance.
 
 **Description:** `PuppyRaffle::refund()` allows players to refund their deposits by initiating external call first and subsequently setting the user's address to zero in `PuppyRaffle::players()` . This introduces a vulnerability to Reentrancy attack, where attacker could deploy a contract with a malicious fallback() function to retrigger`PuppyRaffle::refund()`. Since user remains in `PuppyRaffle::players()` at this point, they would successfully pass all checks, leading to repeated executions of sendValue, ultimately draining the contract.
 
