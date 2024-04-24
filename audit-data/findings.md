@@ -505,6 +505,22 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 2. Use a different data type to accomodate larger values i.e., uint256.
 
 
+## Gas
+
+### [G-01] Unchanged state variables should be declared constant or immutable.
+
+Reading from storage is more expensive than reading from constant, or immutable.
+
+- Instances:
+ `PuppyRaffle::raffleDuration` should be immutable.
+ `PuppyRaffle::commonImageUri` should be constant.
+ `PuppyRaffle::rareImageUri`  should be constant.
+ `PuppyRaffle::legendaryImageUri`  should be constant.
+
+
+## Info
+
+
 ### [I-01]: Solidity pragma should be specific, not wide
 
 Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`
