@@ -422,6 +422,8 @@ function testDosOnEnterRaffle() public {
 
 ```
 
+## Low
+
 ### [L-01] `PuppyRaffle::getActivePlayerIndex()` returning 0 for inactive players can mislead an active user at index 0, thereby undermining intended functionlity of the function. 
 
 **Description:**  The `PuppyRaffle::getActivePlayerIndex()` incorrectly indicates that a user is inactive by returning 0 if they are not found in `PuppyRaffle::players` array. This behavior poses a problem because it can mislead an active user at index 0 into believing that they are inactive, thereby preventing them from triggering a refund. This undermines the intended functionality of the function, as it should accurately identify active users for a refund.
@@ -467,7 +469,7 @@ function testDosOnEnterRaffle() public {
 
 
 
-### [L-01] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
+### [L-03] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
 
 **Description:** The max value uint64 can hold is 18446744073709551615 ~ 18.4e18. Any number beyond that is susceptible to overflow. The fee calculated in `PuppyRaffle::selectWinner()` is of type uint256 and that value gets truncated when it is casted off as uint64, resulting in incorrect calculation of the totalFees.
 
@@ -518,8 +520,26 @@ Reading from storage is more expensive than reading from constant, or immutable.
  `PuppyRaffle::legendaryImageUri`  should be constant.
 
 
-## Info
+### [G-02] Storage variables in Loops should be cached.
 
+Consider using cached length instead of reading directly from state variable. Everytime you call `players.length`, you read from storage as opposed to reading from memory which is more gas efficient.
+
+Instances: `PuppyRaffle::enterRaffle()`
+
+```diff
++       uint256 playersLength = players.length;
++       for (uint256 i = 0; i < playersLength - 1; i++) {
+-       for (uint256 i = 0; i < players.length - 1; i++) {
++           for (uint256 j = i + 1; j < playersLength; j++) {
+-           for (uint256 j = i + 1; j < players.length; j++) {
+                require(players[i] != players[j], "PuppyRaffle: Duplicate player");
+            }
+        }
+
+```
+
+
+## Info
 
 ### [I-01]: Solidity pragma should be specific, not wide
 
@@ -558,3 +578,20 @@ Deploy with a recent version of Solidity (at least 0.8.18) with no known severe 
 Use a simple pragma version that allows any of these versions. Consider using the latest version of Solidity for testing.
 
 Refer to [Slither](https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity)
+
+## [I-04]: Missing checks for `address(0)` when assigning values to address state variables
+
+Check for `address(0)` when assigning values to address state variables.
+
+- Found in src/PuppyRaffle.sol [Line: 67](src/PuppyRaffle.sol#L67)
+
+	```solidity
+	        feeAddress = _feeAddress;
+	```
+
+- Found in src/PuppyRaffle.sol [Line: 218](src/PuppyRaffle.sol#L218)
+
+	```solidity
+	        feeAddress = newFeeAddress;
+	```
+
