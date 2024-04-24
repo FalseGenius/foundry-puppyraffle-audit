@@ -506,6 +506,32 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 1. Consider using SafeMath library provided by OpenZeppelin for arithmetic operations, preventing any potential underflows/overflows. 
 2. Use a different data type to accomodate larger values i.e., uint256.
 
+### [L-04] Event is missing `indexed` fields
+
+Index event fields make the field more quickly accessible to off-chain tools that parse events. However, note that each index field costs extra gas during emission, so it's not necessarily best to index the maximum allowed per event (three fields). Each event should use three indexed fields if there are three or more fields, and gas usage is not particularly of concern for the events in question. If there are fewer than three fields, all of the fields should be indexed.
+
+- Found in src/PuppyRaffle.sol [Line: 58](src/PuppyRaffle.sol#L58)
+
+	```solidity
+	    event RaffleEnter(address[] newPlayers);
+	```
+
+- Found in src/PuppyRaffle.sol [Line: 59](src/PuppyRaffle.sol#L59)
+
+	```solidity
+	    event RaffleRefunded(address player);
+	```
+
+- Found in src/PuppyRaffle.sol [Line: 60](src/PuppyRaffle.sol#L60)
+
+	```solidity
+	    event FeeAddressChanged(address newFeeAddress);
+	```
+
+
+
+
+
 
 ## Gas
 
