@@ -165,7 +165,7 @@ contract PuppyRaffle is ERC721, Ownable {
         // @audit-info Don't use magic numbers. Use constants reflecting the meaning of the number stated.
         // uint256 constant POOL_PERCENTAGE = 80;
         // uint256 constant FEE_PERCENTAGE = 20;
-        // uint256 constant PRECISION = 20;
+        // uint256 constant PRECISION = 100;
         uint256 prizePool = (totalAmountCollected * 80) / 100;
         uint256 fee = (totalAmountCollected * 20) / 100;
 

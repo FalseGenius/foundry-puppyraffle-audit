@@ -469,7 +469,7 @@ function testDosOnEnterRaffle() public {
 
 
 
-### [L-03] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, due to overflow.
+### [L-03] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, adding incorrect amount to `PuppyRaffle::totalFees`.
 
 **Description:** The max value uint64 can hold is 18446744073709551615 ~ 18.4e18. Any number beyond that is susceptible to overflow. The fee calculated in `PuppyRaffle::selectWinner()` is of type uint256 and that value gets truncated when it is casted off as uint64, resulting in incorrect calculation of the totalFees.
 
@@ -620,4 +620,42 @@ Check for `address(0)` when assigning values to address state variables.
 	```solidity
 	        feeAddress = newFeeAddress;
 	```
+
+## [I-05]: Define and use `constant` variables instead of using literals
+
+If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract, reflecting meaning of hardcoded magic numbers.
+
+```diff
+contract PuppyRaffle is ERC721, Ownable {
+    // Other code
++   uint256 constant POOL_PERCENTAGE = 80;
++   uint256 constant FEE_PERCENTAGE = 20;
++   uint256 constant PRECISION = 100;
+    function selectWinner() external {
+        // Other code...
+
+-       uint256 prizePool = (totalAmountCollected * 80) / 100;
+-       uint256 fee = (totalAmountCollected * 20) / 100;
++       uint256 prizePool = (totalAmountCollected * POOL_PERCENTAGE) / PRECISION;
++       uint256 fee = (totalAmountCollected * FEE_PERCENTAGE) / PRECISION;
+
+        // Other code...
+    }
+}
+
+```
+
+## [I-06]: Missing event emits in Key Raffle functions
+
+Events should be emitted that record significant actions within the contract. `PuppyRaffle::selectWinner()` should emit an event to reflect this. 
+```diff
+    // Other events
++   event RaffleWinner(address indexed winner, uint256 indexed tokenId); 
+    
+    function selectWinner() external {
+        // Other code...
+
++       emit RaffleWinner(winner, tokenId);
+    }
+```
 
