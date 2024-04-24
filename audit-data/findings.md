@@ -430,7 +430,16 @@ function testDosOnEnterRaffle() public {
 
 **Impact:** This has significant implications for fairness of the PuppyRaffle contract. Any user at index 0 could be erroneously denied an opportunity to trigger a refund, which undermines contract fairness and user experience.
 
-**Recommended Mitigation:** Consider modifying the `PuppyRaffle::getActivePlayerIndex()` function to return a value that clearly indicates when a user is not found in the `PuppyRaffle::players` array. One common approach is to use a sentinel value, such as a `-1` to represent "Not found" or "inactive".
+**Proof of concept:** 
+
+1. User enters the Raffle. They are the first entrant.
+2. `PuppyRaffle::getActivePlayerIndex()` returns 0.
+3. User thinks they have not entered correctly due to User Documentation.
+4. They enter again, wasting gas.
+
+**Recommended Mitigation:** The easiest recommendation would be to revert if the user is not found in the array instead of returning 0.
+
+You could also consider modifying the `PuppyRaffle::getActivePlayerIndex()` function to return a value that clearly indicates when a user is not found in the `PuppyRaffle::players` array. One common approach is to use a sentinel value, such as a `-1` to represent "Not found" or "inactive".
 
 ```diff
     function getActivePlayerIndex(address player) external view returns (uint256) {
