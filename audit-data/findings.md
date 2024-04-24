@@ -1,3 +1,5 @@
+## High
+
 ### [H-01] Reentrancy attack in `PuppyRaffle::refund()` enables entrant to drain the contract balance.
 
 **Description:** `PuppyRaffle::refund()` allows players to refund their deposits by initiating external call first and subsequently setting the user's address to zero in `PuppyRaffle::players()` . This introduces a vulnerability to Reentrancy attack, where attacker could deploy a contract with a malicious fallback() function to retrigger`PuppyRaffle::refund()`. Since user remains in `PuppyRaffle::players()` at this point, they would successfully pass all checks, leading to repeated executions of sendValue, ultimately draining the contract.
@@ -132,6 +134,32 @@
 ```
 
 
+### [H-02] Insecure randomness generation in `PuppyRaffle::selectWinner()` is exploitable by miner, making it predictable and taking away the randomness from the function, and predict the winning puppy.
+
+**Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner to some extent. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process; they will know ahead of time the values of time, difficulty and address, thereby choosing winner of the Raffle to be themselves, compromising the randomness and fairness of the function.
+
+*Note:* This additionally means, users could front-run `refund()` if they see that they are not the winner.
+
+```javascript
+    function selectWinner() external {
+        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
+        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
+        
+@>       uint256 winnerIndex =
+            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
+        // Rest of the code
+    }
+```
+
+**Impact:** The miner can influence winner of the Raffle, selecting the `rarest` puppy, making the Raffle a gas war as who wins the raffles.
+
+**Proof of Concept:** 
+
+1. Validators/Miners could know ahead of time the `block.timestamp` and `block.difficulty`, and use it to predict when to participate. See the blog on [Solidity: Prevrandao](https://soliditydeveloper.com/prevrandao). `block.difficulty` was recently replaced by `block.prevrandao`.
+2. Validators/Miners can mine/manipulate their `msg.sender` to result in their address generated as the winner.
+3. Users can revert the transaction if they do not like the winner of resulting puppy.
+
+**Recommended Mitigation:** Do not use block.timestamp, now or blockhash as a source of randomness. Consider using cryptographically-generated random number generator such as Chainlink VRF.
 
 ### [M-01] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle()` function is a potential Denial-of-service (DoS) attack, incrementing gas costs for future players.
 
@@ -455,20 +483,7 @@ You could also consider modifying the `PuppyRaffle::getActivePlayerIndex()` func
 
 ```
 
-### [L-02] Insecure randomness generation in `PuppyRaffle::selectWinner()` that is exploitable by miner, making it predictable and taking away the randomness from the function.
 
-**Description:** The winner is selected by relying on user address, block timestamp and block difficulty in `PuppyRaffle::selectWinner()`. This approach presents a vulnerability that can be exploited by a miner. By manipulating the timestamp, difficulty and mining for an address that would allow them to predict the outcome of the selection process, compromising the randomness and fairness of the function.
-
-```javascript
-    function selectWinner() external {
-        require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
-        require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
-        
-@>       uint256 winnerIndex =
-            uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
-        // Rest of the code
-    }
-```
 
 **Impact:** A malicious miner can manipulate the outcome, rigging the results in favor of themselves or others, compromising the trust of participants and authenticity, leading to reputational damage.
 
@@ -478,7 +493,7 @@ You could also consider modifying the `PuppyRaffle::getActivePlayerIndex()` func
 
 
 
-### [L-03] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, adding incorrect amount to `PuppyRaffle::totalFees`.
+### [L-02] Casting uint256 fee as uint64 in `PuppyRaffle::selectWinner()` is a potential unsafe casting vulnerability, truncating fee into a representable value for uint64, adding incorrect amount to `PuppyRaffle::totalFees`.
 
 **Description:** The max value uint64 can hold is 18446744073709551615 ~ 18.4e18. Any number beyond that is susceptible to overflow. The fee calculated in `PuppyRaffle::selectWinner()` is of type uint256 and that value gets truncated when it is casted off as uint64, resulting in incorrect calculation of the totalFees.
 
@@ -515,7 +530,7 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 1. Consider using SafeMath library provided by OpenZeppelin for arithmetic operations, preventing any potential underflows/overflows. 
 2. Use a different data type to accomodate larger values i.e., uint256.
 
-### [L-04] Event is missing `indexed` fields
+### [L-03] Event is missing `indexed` fields
 
 Index event fields make the field more quickly accessible to off-chain tools that parse events. However, note that each index field costs extra gas during emission, so it's not necessarily best to index the maximum allowed per event (three fields). Each event should use three indexed fields if there are three or more fields, and gas usage is not particularly of concern for the events in question. If there are fewer than three fields, all of the fields should be indexed.
 
@@ -614,7 +629,7 @@ Use a simple pragma version that allows any of these versions. Consider using th
 
 Refer to [Slither](https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity)
 
-## [I-04]: Missing checks for `address(0)` when assigning values to address state variables
+### [I-04]: Missing checks for `address(0)` when assigning values to address state variables
 
 Check for `address(0)` when assigning values to address state variables.
 
@@ -630,9 +645,9 @@ Check for `address(0)` when assigning values to address state variables.
 	        feeAddress = newFeeAddress;
 	```
 
-## [I-05]: Define and use `constant` variables instead of using literals
+### [I-05]: Define and use `constant` variables instead of using literals
 
-If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract, reflecting meaning of hardcoded magic numbers.
+If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract, reflecting meaning of hardcoded magic numbers in `PuppyRaffle::selectWinner()`.
 
 ```diff
 contract PuppyRaffle is ERC721, Ownable {
@@ -654,7 +669,20 @@ contract PuppyRaffle is ERC721, Ownable {
 
 ```
 
-## [I-06]: Missing event emits in Key Raffle functions
+### [I-06]: `PuppyRaffle::selectWinner()` does not follow CEI, which is not the best practice
+
+It is best to keep code clean and follow CEI (Checks, Effects, Interactions).
+
+```diff
+-      (bool success,) = winner.call{value: prizePool}("");
+-       require(success, "PuppyRaffle: Failed to send prize pool to winner");
+        _safeMint(winner, tokenId);
++      (bool success,) = winner.call{value: prizePool}("");
++       require(success, "PuppyRaffle: Failed to send prize pool to winner");
+```
+
+
+### [I-07]: Missing event emits in Key Raffle functions
 
 Events should be emitted that record significant actions within the contract. `PuppyRaffle::selectWinner()` should emit an event to reflect this. 
 ```diff
