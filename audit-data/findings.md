@@ -505,4 +505,12 @@ So 20e18 gets casted as 1.5e18 due to overflow.
 2. Use a different data type to accomodate larger values i.e., uint256.
 
 
+### [I-2]: Solidity pragma should be specific, not wide
 
+Consider using a specific version of Solidity in your contracts instead of a wide version. For example, instead of `pragma solidity ^0.8.0;`, use `pragma solidity 0.8.0;`
+
+- Found in src/PuppyRaffle.sol [Line: 2](src/PuppyRaffle.sol#L2)
+
+	```solidity
+	pragma solidity ^0.7.6;
+	```
