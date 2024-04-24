@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 // @audit-i Use a fixed version of solidity; use of floating pragma is not recommended.
+// @audit-info why are you using an older version of solidity? Use a stable version; 0.8.18.
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -28,6 +29,7 @@ contract PuppyRaffle is ERC721, Ownable {
     address public previousWinner;
 
     // We do some storage packing to save gas
+    // @audit-info check for zero address
     address public feeAddress;
     uint64 public totalFees = 0;
 
@@ -37,6 +39,7 @@ contract PuppyRaffle is ERC721, Ownable {
     mapping(uint256 => string) public rarityToName;
 
     // Stats for the common puppy (pug)
+    // @audit-gas should be constant
     string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
     uint256 public constant COMMON_RARITY = 70;
     string private constant COMMON = "common";
@@ -88,6 +91,8 @@ contract PuppyRaffle is ERC721, Ownable {
 
         // Check for duplicates
         // @audit-h DoS vulnerability here due to unbounded for-loop
+        // @audit-gas use cached length instead of reading directly from state variable
+        // uint256 playersLength = players.length;
         for (uint256 i = 0; i < players.length - 1; i++) {
             for (uint256 j = i + 1; j < players.length; j++) {
                 require(players[i] != players[j], "PuppyRaffle: Duplicate player");
@@ -110,6 +115,10 @@ contract PuppyRaffle is ERC721, Ownable {
         payable(msg.sender).sendValue(entranceFee);
 
         players[playerIndex] = address(0);
+        // @audit-low
+        // If an event can be manipulated
+        // An event is wrong
+        // An event is missing
         emit RaffleRefunded(playerAddress);
     }
 
@@ -197,6 +206,8 @@ contract PuppyRaffle is ERC721, Ownable {
         require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
         uint256 feesToWithdraw = totalFees;
         totalFees = 0;
+        // Slither thinks the line below is vulnerable, but it's not, so we let slither skip it,
+        //slither-disable-next-line arbitrary-send-eth 
         (bool success,) = feeAddress.call{value: feesToWithdraw}("");
         require(success, "PuppyRaffle: Failed to withdraw fees");
     }
