@@ -647,7 +647,7 @@ Check for `address(0)` when assigning values to address state variables.
 
 ### [I-05]: Define and use `constant` variables instead of using literals
 
-If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract, reflecting meaning of hardcoded magic numbers in `PuppyRaffle::selectWinner()`.
+If the same constant literal value is used multiple times, create a constant state variable and reference it throughout the contract, reflecting meaning of hardcoded magic numbers in `PuppyRaffle::selectWinner()`. Hardcoded numbers are confusing.
 
 ```diff
 contract PuppyRaffle is ERC721, Ownable {
