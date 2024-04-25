@@ -400,7 +400,23 @@ contract PuppyRaffleTest is Test {
         vm.expectRevert();
         puppyRaffle.withdrawFees();
     }
+
+    function testSelectWinnerDOS() public { 
+
+        address[] memory players = new address[](4);
+        players[0] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[1] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[2] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[3] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        puppyRaffle.enterRaffle{value: 4 ether}(players);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        vm.expectRevert();
+        puppyRaffle.selectWinner();
     
+    }
 }
 
 contract ReentrancyAttacker {

@@ -99,6 +99,6 @@ None
 View the [audit-report-templating](https://github.com/Cyfrin/audit-report-templating) repo to install all dependencies. 
 
 ```bash
-cd audits
+cd audit-data
 pandoc report.md -o 24-04-2024-PuppyRaffleAuditReport.pdf --from markdown --template=eisvogel --listings
 ```

@@ -89,12 +89,12 @@ We use the [CodeHawks](https://docs.codehawks.com/hawks-auditors/how-to-evaluate
 
 | Severity      | Number of Issues Found |
 | ------------- | ---------------------- |
-| High          | 3                      |
+| High          | 4                      |
 | Medium        | 3                      |
 | Low           | 3                      |
 | Gas           | 2                      |
-| Informational | 7                      |
-| Total         | 18                     |
+| Informational | 8                      |
+| Total         | 20                     |
 
 
 # Findings
@@ -325,6 +325,56 @@ We use the [CodeHawks](https://docs.codehawks.com/hawks-auditors/how-to-evaluate
 **Recommended Mitigation:** Consider using newer versions of solidity, or using uint256 variable types that can hold large values when dealing with tokens.
 
 A better approach would be using `SafeMath` library of OpenZeppelin for arithmetics. Either that, or remove the balance check from `withdrawFees`.
+
+### [H-04] Malicious Winner can halt the raffle forever
+
+**Description:** Once the winner is chosen, the `PuppyRaffle::selectWinner()` sends prizePool via external call to winner account and mints the NFT,
+
+```javascript
+    _safeMint(winner, tokenId);
+
+    // ERC721 function
+    function _safeMint(address to, uint256 tokenId, bytes memory _data) internal virtual {
+        _mint(to, tokenId);
+        require(_checkOnERC721Received(address(0), to, tokenId, _data), "ERC721: transfer to non ERC721Receiver implementer");
+    }
+```
+This `_safeMint` is inherited from ERC721. If the winner is a smart contract, it expects the contract to have `onERC721Received` hook implemented. Otherwise, it reverts! If all the players entered are smart contracts without the `onERC721Received` hook, raffle would halt forever.
+
+
+**Impact:** It would be impossible to start a new round, and no new players would be able to enter the Raffle.
+
+**Proof of Concept:** Have 4 smart contract address, with no `onERC721Received` implementation, join the raffle.
+
+<details>
+
+<summary>PoC</summary>
+
+```javascript
+
+    function testSelectWinnerDOS() public { 
+
+        // The 4 contracts below does not implement onERC721Received hook to receive the NFT
+        address[] memory players = new address[](4);
+        players[0] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[1] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[2] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        players[3] = (address(new ReentrancyAttacker(address(puppyRaffle))));
+        puppyRaffle.enterRaffle{value: 4 ether}(players);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number + 1);
+
+        vm.expectRevert();
+        puppyRaffle.selectWinner();
+    }
+    
+```
+
+</details>
+
+
+**Recommended Mitigation:** Consider adding a `claimPrize` function that winners would be able to call themselves to collect the prize fees. If they do not have `onERC721Received`, it would only impact them.
 
 ### [M-01] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle()` function is a potential Denial-of-service (DoS) attack, incrementing gas costs for future players.
 
@@ -814,4 +864,15 @@ Events should be emitted that record significant actions within the contract. `P
 +       emit RaffleWinner(winner, tokenId);
     }
 ```
+### [I-08] Test Coverage below 90%
 
+**Description:** The test coverage of the tests are below 90%. This often means that there are parts of the code that are not tested.
+
+```
+| File                         | % Lines        | % Funcs       |
+|------------------------------|----------------|---------------|
+| script/DeployPuppyRaffle.sol | 0.00% (0/3)    | 0.00% (0/1)   |
+| src/PuppyRaffle.sol          | 82.14% (46/56) | 77.78% (7/9)  |
+| test/PuppyRaffleTest.t.sol   | 100.00% (2/2)  | 100.00% (2/2) |
+| Total                        | 78.69% (48/61) | 75.00% (9/12) |
+```
