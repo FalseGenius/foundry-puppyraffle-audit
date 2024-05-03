@@ -100,8 +100,8 @@ contract PuppyRaffle is ERC721, Ownable {
             }
         }
 
-        // audit-i do we emit events i newPlayers array length is 0; when no new players are entering? 
-        // Sounds like waste of gas. 
+        // audit-i do we emit events i newPlayers array length is 0; when no new players are entering?
+        // Sounds like waste of gas.
         emit RaffleEnter(newPlayers);
     }
 
@@ -127,7 +127,7 @@ contract PuppyRaffle is ERC721, Ownable {
     /// @param player the address of a player in the raffle
     /// @return the index of the player in the array, if they are not active, it returns 0
     // @audit-m getActivePlayerIndex returns 0 if the player isn't found in players array which
-    // is a valid index. 
+    // is a valid index.
     function getActivePlayerIndex(address player) external view returns (uint256) {
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i] == player) {
@@ -150,13 +150,13 @@ contract PuppyRaffle is ERC721, Ownable {
     function selectWinner() external {
         require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
         require(players.length >= 4, "PuppyRaffle: Need at least 4 players");
-        
+
         // @audit randomness
         // Fixes: Chainlink VRF randomness is verified and it comes with its guarantees
         uint256 winnerIndex =
             uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp, block.difficulty))) % players.length;
         address winner = players[winnerIndex];
-        
+
         // q why not do address(this).balance?
         uint256 totalAmountCollected = players.length * entranceFee;
 
@@ -171,8 +171,8 @@ contract PuppyRaffle is ERC721, Ownable {
 
         // e This doesn't look safe? A lot of casting going on wiht the totalFees
         // @audit overflow! Newer versions of solidity doesn't allow it
-            // := Check chisel: type(uint64).max => 18446744073709551615 => ~ 18.4 ether. 
-            // So if the contract makes above that, it's definitely going to overflow
+        // := Check chisel: type(uint64).max => 18446744073709551615 => ~ 18.4 ether.
+        // So if the contract makes above that, it's definitely going to overflow
         // Fixes: Newer versions of solidity, bigger uints
         // @audit uint64(fee) -> unsafe casting
         totalFees = totalFees + uint64(fee);
@@ -180,7 +180,7 @@ contract PuppyRaffle is ERC721, Ownable {
         uint256 tokenId = totalSupply();
 
         // We use a different RNG calculate from the winnerIndex to determine rarity
-        // @audit insecure randomness vulnerability here as well. 
+        // @audit insecure randomness vulnerability here as well.
         uint256 rarity = uint256(keccak256(abi.encodePacked(msg.sender, block.difficulty))) % 100;
         if (rarity <= COMMON_RARITY) {
             tokenIdToRarity[tokenId] = COMMON_RARITY;
@@ -201,14 +201,14 @@ contract PuppyRaffle is ERC721, Ownable {
     }
 
     /// @notice this function will withdraw the fees to the feeAddress
-    // @audit-m if balance of contract does not match with totalFees (due to totalFees overflow or a malicious contract 
+    // @audit-m if balance of contract does not match with totalFees (due to totalFees overflow or a malicious contract
     // selfdestructing eth into this contract, this withdrawFees() becomes inoperable.
     function withdrawFees() external {
         require(address(this).balance == uint256(totalFees), "PuppyRaffle: There are currently players active!");
         uint256 feesToWithdraw = totalFees;
         totalFees = 0;
         // Slither thinks the line below is vulnerable, but it's not, so we let slither skip it,
-        //slither-disable-next-line arbitrary-send-eth 
+        //slither-disable-next-line arbitrary-send-eth
         (bool success,) = feeAddress.call{value: feesToWithdraw}("");
         require(success, "PuppyRaffle: Failed to withdraw fees");
     }

